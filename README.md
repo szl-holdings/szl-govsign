@@ -6,6 +6,8 @@ ATELIER owns Hub cards. Do not treat this README as a second model card.
 
 ## What it is / is NOT
 
+- Hub `model.joblib` is **QUARANTINED** executable serialization. Do not `joblib.load` it. GitHub source is the approved path.
+
 - **IS:** a software kernel — signed governance provenance (in-toto / DSSE attestations over SZL kernel receipts)
 - **IS NOT:** trained weights
 - **IS NOT:** a CUDA bench

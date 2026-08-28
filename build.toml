@@ -3,3 +3,6 @@ name = "szl_govsign"
 
 [torch]
 universal = true
+
+[torch-noarch]
+src = "torch-ext/szl_govsign"

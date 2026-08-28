@@ -1,0 +1,11 @@
+{
+  "name": "szl_govsign",
+  "version": "0.1.0",
+  "summary": "Signed governance provenance: in-toto/DSSE attestations over SZL kernel receipts",
+  "license": "Apache-2.0",
+  "universal": true,
+  "requires": ["cryptography"],
+  "predicate_type": "https://szl.holdings/governance/v1",
+  "doctrine": "signature proves authorship+integrity only; never proves Lambda uniqueness (Conjecture 1); advisory never upgraded to proven; energy MEASURED-only; honest-BLOCKED signed as BLOCKED",
+  "suite": "SZLHOLDINGS/szl-kernels"
+}

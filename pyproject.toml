@@ -1,0 +1,11 @@
+[project]
+name = "szl-govsign"
+version = "0.1.0"
+description = "DSSE / in-toto governance signatures. Software kernel, not a trained model."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.9"
+dependencies = ["cryptography"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

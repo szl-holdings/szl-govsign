@@ -9,11 +9,13 @@ HONESTY DOCTRINE is enforced structurally here:
     `proven_trust` is hard-coded False — there is no code path that sets it
     True. The signature never upgrades advisory -> proven.
   * `energy.label` may only be "MEASURED" (no MODELED / ESTIMATED / FABRICATED).
+  * measured energy values must be finite and non-negative.
   * `decision.status` honestly records BLOCKED when blocked; a blocked input
     is never silently flipped to ALLOWED (see build_governance_predicate).
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Any
 
@@ -29,8 +31,9 @@ _LAMBDA_BASIS = "Conjecture-1-advisory"  # never "proven"
 class EnergyLabel:
     """A MEASURED-only energy claim.
 
-    `joules` (or any unit) must be an actually-measured quantity. We do not
-    permit modeled/estimated/fabricated labels — `label` is constrained.
+    `joules` (or any unit) must be an actually-measured finite, non-negative
+    quantity. We do not permit modeled/estimated/fabricated labels — `label`
+    is constrained.
     """
 
     value: float
@@ -45,6 +48,10 @@ class EnergyLabel:
                 "modeled/estimated/fabricated energy is forbidden by doctrine"
                 % (self.label,)
             )
+        if isinstance(self.value, bool) or not isinstance(self.value, (int, float)):
+            raise ValueError("energy value must be a finite non-negative number")
+        if not math.isfinite(self.value) or self.value < 0:
+            raise ValueError("energy value must be a finite non-negative number")
 
     def to_dict(self) -> Dict[str, Any]:
         return {

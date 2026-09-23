@@ -45,9 +45,18 @@ class Subject:
 
 
 def _canonical_json_bytes(obj: Any) -> bytes:
-    """Deterministic JSON: sorted keys, compact separators, UTF-8."""
+    """Deterministic RFC-compatible JSON: sorted keys, compact separators, UTF-8.
+
+    Non-finite floats are refused instead of emitting JavaScript-style NaN or
+    Infinity tokens that are outside the JSON data model and are not portable
+    across DSSE/in-toto implementations.
+    """
     return json.dumps(
-        obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        obj,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
     ).encode("utf-8")
 
 

@@ -6,6 +6,7 @@ readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.9"
 dependencies = ["cryptography"]
+classifiers = ["Private :: Do Not Upload"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

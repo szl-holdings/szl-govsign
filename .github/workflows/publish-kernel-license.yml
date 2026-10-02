@@ -1,0 +1,92 @@
+name: Native kernel license publication
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the reviewed LICENSE-only native Kernel Hub repair
+        required: true
+        type: boolean
+        default: false
+      expected_native_parent:
+        description: Exact native Kernel Hub parent approved in hf-publication/license.json
+        required: true
+        type: string
+        default: e498c5042c1f721a1bbd8a4b9fdaa3756001e78d
+
+permissions:
+  contents: read
+  checks: read
+
+concurrency:
+  group: native-kernel-license-szl-govsign-${{ github.event_name == 'workflow_dispatch' && 'publisher' || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    name: verify kernel license publication contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+      - name: Check out exact source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12.13'
+          check-latest: false
+      - name: Verify license plan and publication refusal boundaries
+        run: |
+          python -I scripts/publish_kernel_license.py
+          python -I tests/test_kernel_license_publication.py
+          python -I tests/test_hub_single_writer.py
+          git diff --check
+
+  publish:
+    name: publish reviewed native kernel license
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Harden runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1
+        with:
+          egress-policy: audit
+      - name: Check out exact canonical source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12.13'
+          check-latest: false
+      - name: Publish or dry-run the reviewed license repair
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HF_PUBLISH_TOKEN: ${{ secrets.HF_ORG_TOKEN || secrets.HF_TOKEN }}
+          PUBLISH: ${{ inputs.publish }}
+          EXPECTED_NATIVE_PARENT: ${{ inputs.expected_native_parent }}
+        run: |
+          set -euo pipefail
+          mode=--dry-run
+          if [ "$PUBLISH" = 'true' ]; then mode=--publish; fi
+          python -I scripts/publish_kernel_license.py "$mode" --expected-parent "$EXPECTED_NATIVE_PARENT"
+      - name: Retain exact publication evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: kernel-license-publication-${{ github.run_id }}
+          path: reports/kernel-license-publication.json
+          if-no-files-found: warn

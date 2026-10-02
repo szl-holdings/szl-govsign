@@ -4,7 +4,8 @@ type: software
 title: "szl-govsign — DSSE/in-toto governance signatures (Kernel Hub package)"
 authors:
   - family-names: Lutar
-    given-names: Stephen Paul
+    given-names: Stephen P.
+    name-suffix: Jr.
 license: Apache-2.0
-url: "https://huggingface.co/SZLHOLDINGS/szl-govsign"
+url: "https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign"
 repository-code: "https://github.com/szl-holdings/szl-govsign"

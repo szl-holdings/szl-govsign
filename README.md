@@ -73,5 +73,6 @@ not qualify a kernel runtime or publish the model-type mirror.
 
 ## Links
 
-- Hub (publish mirror): https://huggingface.co/SZLHOLDINGS/szl-govsign
+- Native Kernel Hub (publish mirror): https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign
+- Model-type card mirror: https://huggingface.co/SZLHOLDINGS/szl-govsign
 - Hologram space: https://huggingface.co/spaces/SZLHOLDINGS/govsign-live

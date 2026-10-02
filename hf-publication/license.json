@@ -1,0 +1,12 @@
+{
+  "schema": "szl.kernel-license-publication/v1",
+  "repo_id": "SZLHOLDINGS/szl-govsign",
+  "repo_type": "kernel",
+  "path": "LICENSE",
+  "source_license_whitespace_sha256": "0ffddef9e48f8a09aed5caf2d44f7ba1c1be2d9b8e0a6f693b1635b2d5566645",
+  "expected_parent_commit": "e498c5042c1f721a1bbd8a4b9fdaa3756001e78d",
+  "expected_original_sha256": "9589109b10f273b246999e87435e92140ec68dfe8fd4db623a64ab70a81c9871",
+  "license": "Apache-2.0",
+  "official_terms": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+  "operation": "append-canonical-terms-preserve-original-bytes"
+}

@@ -19,12 +19,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-# No committed writer lives here yet. SZLHOLDINGS/szl-govsign (model and kernel) gets
-# one through the shared szl-holdings/.github reusable-hf-mirror.yml caller
-# (HF upgrade plan P7/D9); add exactly that caller here when it lands. The
-# one-shot joblib quarantine writer was removed once the Hub held no
-# model.joblib; tests/test_no_unsafe_serialization.py still refuses it at source.
-WRITERS: frozenset[str] = frozenset()
+# One source-owned publisher updates only the native Kernel Hub LICENSE. The
+# model-type mirror has no writer here. Replace this lane, rather than adding a
+# second native writer, when the shared mirror caller lands. The retired joblib
+# quarantine writer must not return; its source safety check remains in force.
+WRITERS: frozenset[str] = frozenset({
+    ".github/workflows/publish-kernel-license.yml",
+    "scripts/publish_kernel_license.py",
+})
 
 # Executable sources only. Tests, docs and data corpora are not writers.
 EXECUTABLE_SUFFIXES = {".py", ".sh", ".bash", ".ps1", ".js", ".mjs", ".cjs", ".ts", ".yml", ".yaml"}
@@ -41,6 +43,7 @@ HUB_WRITE = re.compile(
     r"|repo-files\s+delete|tag\s+create)\b"
     r"|huggingface/hub-sync@"
     r"|git\s+(?:push|remote\s+add)[^\n]*huggingface\.co"
+    r"|\bgit\([^,\n]+,\s*[\"']push[\"']"
 )
 HF_SECRET = re.compile(r"secrets\.(?:HF_[A-Z0-9_]*|HUGGING[A-Z0-9_]*)\b")
 
@@ -92,6 +95,7 @@ class HubSingleWriter(unittest.TestCase):
             "hf upload SZLHOLDINGS/x .",
             "uses: huggingface/hub-sync@fdffea8e04104d0bd4e3181c5feb3025f0433ff5",
             "git push https://user:tok@huggingface.co/SZLHOLDINGS/x main",
+            'git(clone, "push", "origin", "HEAD:main", env=env)',
         ):
             self.assertRegex(sample, HUB_WRITE)
         self.assertRegex("HF_TOKEN: ${{ secrets.HF_TOKEN || secrets.HF_ORG_TOKEN }}", HF_SECRET)

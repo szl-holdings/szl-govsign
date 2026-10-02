@@ -59,6 +59,18 @@ import szl_govsign as local_kernel
 This selects local Python source rather than calling the Hub loader. Importing local
 source also executes Python. This documentation check does not run that import,
 install dependencies, qualify a runtime or establish a Hub publication.
+## Native kernel license publication
+
+The source-owned `Native kernel license publication` workflow is the sole
+committed writer for the native kernel. Its reviewed manifest permits appending
+the canonical full Apache-2.0 terms to the existing `LICENSE` notice, preserving
+the original notice bytes and every other Git blob and mode. PR and push events
+run local contract checks without Hugging Face credentials. A manual run from
+the current `main` tip defaults to a dry run; publication requires the exact
+reviewed native parent and successful canonical CPU/CodeQL checks. The uploaded
+receipt records immutable source and native commits. This license repair does
+not qualify a kernel runtime or publish the model-type mirror.
+
 ## Links
 
 - Hub (publish mirror): https://huggingface.co/SZLHOLDINGS/szl-govsign

@@ -59,6 +59,31 @@ import szl_govsign as local_kernel
 This selects local Python source rather than calling the Hub loader. Importing local
 source also executes Python. This documentation check does not run that import,
 install dependencies, qualify a runtime or establish a Hub publication.
+
+## Offline candidate integrity
+
+`scripts/build_kernel_candidate.py` assembles a separate review directory from
+the canonical package's exact immutable Git blobs. It adds a root entry point,
+source commit binding and base64-encoded SHA256 file digests, then checks every
+candidate file against the caller's trusted checkout and expected immutable
+commit, rather than trusting the candidate's own revision or digests. Working
+tree edits and untracked files are excluded. The builder
+does not import source Python, contact a provider or read credentials.
+
+```text
+python scripts/build_kernel_candidate.py --source-revision <40-character-source-commit> --output <new-review-directory>
+```
+
+The result is explicitly `UNQUALIFIED_CANDIDATE`. Its `cryptography` dependency
+is retained and reported outside the current Kernel Hub curated dependency set;
+hash verification does not establish loader compatibility, publisher trust,
+CPU/GPU correctness or benchmark performance. Review the exact dependency and
+runtime qualification before loading anything. The existing LICENSE-only
+publisher cannot publish this candidate and its reviewed scope is unchanged.
+
+The offline refusal and byte-binding tests run in the existing CPU contract job.
+This source addition publishes no native kernel files.
+
 ## Native kernel license publication
 
 The source-owned `Native kernel license publication` workflow is the sole

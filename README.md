@@ -2,7 +2,7 @@
 
 This repository is the **source of truth**. Hugging Face Kernel Hub is the **publish mirror**.
 
-ATELIER owns Hub cards. Do not treat this README as a second model card.
+The Kernel Hub card is `hf/kernel-card.md`, published by the `hf-kernel-publish` workflow. Do not treat this README as a second model card.
 
 <!-- szl:header v1 -->
 <!-- Native identity: szl-brand@4309f6fce89179331b0b3ed8c99494e76c5be256; Orbit v2 icon. -->
@@ -29,31 +29,29 @@ ATELIER owns Hub cards. Do not treat this README as a second model card.
 
 ## Load
 
-Set `SZL_GOVSIGN_HF_REVISION` to the immutable **first-class Kernel Hub** commit
-from a verified publication of [`kernels/SZLHOLDINGS/szl-govsign`](https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign). Use the `kernels`
-client version qualified with that publication. The GitHub source commit,
-model-type mirror commit, and Kernel Hub commit are separate identities.
-An observed head, a branch name, or a successful import does not qualify a release.
-
-`trust_remote_code=True` permits execution of the selected repository's Python.
-Review that exact revision, its provenance and publication evidence before enabling it.
-The format check below only rejects missing or mutable revision inputs; it does not
-verify hashes, publisher authorization or compatibility. If that evidence is unavailable,
-stop the Hub load and use separately reviewed local source for development.
+The Kernel Hub repository [`kernels/SZLHOLDINGS/szl-govsign`](https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign)
+is built from `torch-ext/szl_govsign/` in this repository and is written only by the
+`hf-kernel-publish` workflow (see below).
 
 ```python
-import os
-import re
-
-hf_revision = os.environ.get("SZL_GOVSIGN_HF_REVISION", "")
-if re.fullmatch(r"[0-9a-f]{40}", hf_revision) is None:
-    raise ValueError("A verified immutable Kernel Hub revision is required")
-
+# pip install "kernels>=0.17.2" torch cryptography
 from kernels import get_kernel
 
-get_kernel("SZLHOLDINGS/szl-govsign", revision=hf_revision, trust_remote_code=True)
+gs = get_kernel("SZLHOLDINGS/szl-govsign", version=1, trust_remote_code=True)
+assert gs.selfcheck(verbose=False)["all_passed"]
 ```
 
+- `version=1` resolves the `v1` branch of the kernel repository (the stable API channel).
+  For production, pin the `v1` head commit of the **kernel** repository instead, with
+  `revision=<40-hex kernel commit>`. The GitHub source commit, the model-type mirror
+  commit and the Kernel Hub commit are separate identities; `SZL_KERNEL_SOURCE.json` on
+  the Hub names the GitHub commit each build came from.
+- `trust_remote_code=True` permits execution of the selected repository's Python
+  (SZLHOLDINGS is not a trusted kernel publisher). The narrowest form is
+  `trust_remote_code=["SZLHOLDINGS/szl-govsign"]`. Review the revision and its
+  publication receipts before enabling it.
+- `cryptography` is a runtime import. It is outside the `kernels` curated dependency
+  set, so the kernel metadata cannot declare it; install it yourself.
 
 ## Source-only development
 
@@ -73,44 +71,29 @@ This selects local Python source rather than calling the Hub loader. Importing l
 source also executes Python. This documentation check does not run that import,
 install dependencies, qualify a runtime or establish a Hub publication.
 
-## Offline candidate integrity
+## Kernel Hub publication
 
-`scripts/build_kernel_candidate.py` assembles a separate review directory from
-the canonical package's exact immutable Git blobs. It adds a root entry point,
-source commit binding and base64-encoded SHA256 file digests, then checks every
-candidate file against the caller's trusted checkout and expected immutable
-commit, rather than trusting the candidate's own revision or digests. Working
-tree edits and untracked files are excluded. The builder
-does not import source Python, contact a provider or read credentials.
+`.github/workflows/hf-kernel-publish.yml` with `scripts/szl_kernel_publish.py` is the
+only committed Hub writer in this repository (`tests/test_hub_single_writer.py`
+enforces that). Configuration lives in `.github/hf-kernels.json`; the kernel card is
+`hf/kernel-card.md` and the smoke hook is `hf/kernel_smoke.py`.
 
-```text
-python scripts/build_kernel_candidate.py --source-revision <40-character-source-commit> --output <new-review-directory>
-```
+- **Pull requests** build `build/torch-cpu` and `build/torch-universal` from Git objects
+  (byte-identical, LF-normalised, with a generated `metadata.json` and sha256 digest) and
+  load both with `kernels==0.17.2` and CPU torch. No Hub access, no secret.
+- **Published releases** and **manual runs** from `main` (`source_ref`, optional
+  `dry_run`) write the same tree to the kernel repo's `main` and `v1` branches with
+  fast-forward Git pushes, read it back byte for byte, then verify anonymously in a
+  fresh job that `get_kernel(version=1)` and `get_kernel(revision="main")` serve this
+  source. Only then is the model-type twin turned into a pointer card.
+- **Weekly**, a drift guard re-verifies what the Hub serves and fails if the latest
+  release changed the kernel without being published.
 
-The result is explicitly `UNQUALIFIED_CANDIDATE`. Its `cryptography` dependency
-is retained and reported outside the current Kernel Hub curated dependency set;
-hash verification does not establish loader compatibility, publisher trust,
-CPU/GPU correctness or benchmark performance. Review the exact dependency and
-runtime qualification before loading anything. The existing LICENSE-only
-publisher cannot publish this candidate and its reviewed scope is unchanged.
-
-The offline refusal and byte-binding tests run in the existing CPU contract job.
-This source addition publishes no native kernel files.
-
-## Native kernel license publication
-
-The source-owned `Native kernel license publication` workflow is the sole
-committed writer for the native kernel. Its reviewed manifest permits appending
-the canonical full Apache-2.0 terms to the existing `LICENSE` notice, preserving
-the original notice bytes and every other Git blob and mode. PR and push events
-run local contract checks without Hugging Face credentials. A manual run from
-the current `main` tip defaults to a dry run; publication requires the exact
-reviewed native parent and successful canonical CPU/CodeQL checks. The uploaded
-receipt records immutable source and native commits. This license repair does
-not qualify a kernel runtime or publish the model-type mirror.
+`build/` is not committed here: it is generated at the source commit. The kernel major
+(`version` in `.github/hf-kernels.json`) is independent of the package semver.
 
 ## Links
 
 - Native Kernel Hub (publish mirror): https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign
-- Model-type card mirror: https://huggingface.co/SZLHOLDINGS/szl-govsign
+- Model-type twin (pointer to the kernel repo): https://huggingface.co/SZLHOLDINGS/szl-govsign
 - Hologram space: https://huggingface.co/spaces/SZLHOLDINGS/govsign-live

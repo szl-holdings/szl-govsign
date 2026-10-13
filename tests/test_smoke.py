@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
@@ -61,15 +62,13 @@ def test_selfcheck_fails_against_pre_fix_numeric_behaviour(monkeypatch):
     assert report["all_passed"] is False
 
 
-def test_committed_build_copy_matches_torch_ext():
-    source = ROOT / "torch-ext" / "szl_govsign"
-    build = ROOT / "build" / "torch-universal" / "szl_govsign"
-    names = sorted(p.name for p in source.iterdir() if p.suffix in {".py", ".json"})
-    assert names == sorted(p.name for p in build.iterdir() if p.suffix in {".py", ".json"})
-    for name in names:
-        # Compare without line-ending noise from Windows checkouts.
-        assert (source / name).read_bytes().replace(b"\r\n", b"\n") == \
-            (build / name).read_bytes().replace(b"\r\n", b"\n"), name
+def test_no_committed_build_copy():
+    # build/ is generated from torch-ext/ by scripts/szl_kernel_publish.py at the
+    # source commit and exists only on the Kernel Hub. A committed copy here would
+    # be a second, drifting source.
+    tracked = subprocess.run(["git", "ls-files", "--", "build"], cwd=ROOT, check=True,
+                             capture_output=True, text=True).stdout.split()
+    assert tracked == []
 
 
 if __name__ == "__main__":

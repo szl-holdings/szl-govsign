@@ -1,0 +1,28 @@
+{
+  "schema": "szl.hf-kernels/v1",
+  "$comment": "Consumed by .github/workflows/hf-kernel-publish.yml via scripts/szl_kernel_publish.py. This repository is the single source for the Hub kernel repo below. The kernel imports `cryptography`, which is outside the kernels curated python-depends set, so it is declared in the card and installed by the workflow (CONSUMER_PACKAGES) instead of in metadata.json.",
+  "kernels": [
+    {
+      "repo_id": "SZLHOLDINGS/szl-govsign",
+      "name": "szl-govsign",
+      "version": 1,
+      "license": "Apache-2.0",
+      "source_repository": "szl-holdings/szl-govsign",
+      "packages": [
+        { "src": "torch-ext/szl_govsign", "name": "szl_govsign" }
+      ],
+      "card": "hf/kernel-card.md",
+      "license_file": "LICENSE",
+      "extra_files": {},
+      "prune_paths": [],
+      "python_depends": [],
+      "smoke": "hf/kernel_smoke.py",
+      "model_twin": {
+        "repo_id": "SZLHOLDINGS/szl-govsign",
+        "mode": "pointer",
+        "card": "hf/model-twin-pointer.md",
+        "prune_paths": ["build/", "torch-ext/", "build.toml", "BENCH.laptop-blackwell.json"]
+      }
+    }
+  ]
+}

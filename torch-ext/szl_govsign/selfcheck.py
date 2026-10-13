@@ -1,5 +1,7 @@
 """selfcheck(): sign a sample governance attestation, verify it, then TAMPER
-the payload and confirm verification FAILS.
+the payload and confirm verification FAILS. Also confirm the fail-closed
+numeric contract: impossible MEASURED energy (NaN, +/-inf, negative) is refused
+and a Statement carrying a non-finite number is never signed.
 
 Returns a dict report; prints human-readable lines if run as a script.
 """
@@ -24,6 +26,20 @@ from .envelope import (
     verify,
     generate_ephemeral_keypair,
 )
+
+
+_IMPOSSIBLE_ENERGY_VALUES = (float("nan"), float("inf"), float("-inf"), -5.0)
+
+
+def _raises_value_error(fn) -> bool:
+    """True only when `fn` refuses with ValueError (any other outcome fails)."""
+    try:
+        fn()
+    except ValueError:
+        return True
+    except Exception:
+        return False
+    return False
 
 
 def _sample_subjects():
@@ -87,12 +103,31 @@ def selfcheck(verbose: bool = True) -> Dict[str, Any]:
         verify(blocked_env, pub) and blocked_status == "BLOCKED"
     )
 
+    # Numeric contract: impossible MEASURED energy is refused at construction,
+    # and non-finite numbers anywhere in the Statement are refused at signing.
+    report["nonfinite_energy_refused"] = all(
+        _raises_value_error(lambda v=v: EnergyLabel(value=v, unit="joules"))
+        for v in _IMPOSSIBLE_ENERGY_VALUES
+    )
+    nan_score_pred = build_governance_predicate(
+        lambda_verdict=LambdaVerdict(score=float("nan"), notes="advisory only"),
+        energy=EnergyLabel(value=12.5, unit="joules"),
+        decision=GovernanceDecision(status="ALLOWED", reason="passed gates"),
+        honest_blocked=False,
+    )
+    report["nonfinite_payload_refused"] = _raises_value_error(
+        lambda: attest(subjects, nan_score_pred, priv,
+                       predicate_type=GOVERNANCE_PREDICATE_TYPE)
+    )
+
     report["all_passed"] = all(
         [
             report["sign_ok"],
             report["verify_ok"],
             report["tamper_detected"],
             report["honest_blocked_signed_as_blocked"],
+            report["nonfinite_energy_refused"],
+            report["nonfinite_payload_refused"],
         ]
     )
 
@@ -103,6 +138,9 @@ def selfcheck(verbose: bool = True) -> Dict[str, Any]:
         print("tamper-detected:    %s" % report["tamper_detected"])
         print("honest-BLOCKED:     %s (signed status=%s)" % (
             report["honest_blocked_signed_as_blocked"], blocked_status))
+        print("bad energy refused: %s (nan, inf, -inf, -5.0)" %
+              report["nonfinite_energy_refused"])
+        print("NaN payload refused: %s" % report["nonfinite_payload_refused"])
         print("ALL PASSED:         %s" % report["all_passed"])
 
     return report

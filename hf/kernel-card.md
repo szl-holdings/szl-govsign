@@ -12,6 +12,11 @@ tags:
   - doi:10.5281/zenodo.19944926
 ---
 
+<!-- Native artwork: szl-brand@4309f6fce89179331b0b3ed8c99494e76c5be256; Orbit v2 icon SHA-256 6e2b7d72a3af3d9602b79de41df0194ede6496a9661f057108ec224c0efc92e6. -->
+<p><a href="https://github.com/szl-holdings"><img src="https://raw.githubusercontent.com/szl-holdings/szl-brand/4309f6fce89179331b0b3ed8c99494e76c5be256/kit/logos/orbit-v2/suite/szl-icon-32.svg" alt="SZL Holdings — Orbit v2" width="40" height="40" /></a></p>
+
+<p><small>Orbit v2 artwork © SZL Holdings · <a href="https://github.com/szl-holdings/szl-brand/blob/4309f6fce89179331b0b3ed8c99494e76c5be256/kit/LICENSE">CC BY 4.0</a>. Page documentation remains Apache-2.0.</small></p>
+
 # {{KERNEL_NAME}}: signed governance provenance
 
 `szl-govsign` produces **in-toto / DSSE signed governance attestations**. Each one binds

@@ -42,24 +42,36 @@ class EnergyLabel:
     method: str = "direct-measurement"
 
     def __post_init__(self) -> None:
-        if self.label not in _ALLOWED_ENERGY_LABELS:
+        self._validate(self.value, self.label)
+
+    @staticmethod
+    def _validate(value: object, label: object) -> None:
+        if label not in _ALLOWED_ENERGY_LABELS:
             raise ValueError(
                 "energy label must be MEASURED-only (got %r); "
                 "modeled/estimated/fabricated energy is forbidden by doctrine"
-                % (self.label,)
+                % (label,)
             )
-        if isinstance(self.value, bool) or not isinstance(self.value, (int, float)):
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError("energy value must be a finite non-negative number")
-        if not math.isfinite(self.value) or self.value < 0:
+        try:
+            valid = math.isfinite(value) and value >= 0
+        except OverflowError:
+            valid = False
+        if not valid:
             raise ValueError("energy value must be a finite non-negative number")
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "value": self.value,
             "unit": self.unit,
             "label": self.label,
             "method": self.method,
         }
+        # Instances remain mutable for legitimate updates. Revalidate the
+        # emitted snapshot so later edits cannot bypass constructor checks.
+        self._validate(result["value"], result["label"])
+        return result
 
 
 @dataclass
@@ -78,7 +90,7 @@ class LambdaVerdict:
     proven_trust: bool = field(default=False, init=False)
 
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        result = {
             "score": self.score,
             "notes": self.notes,
             "basis": self.basis,
@@ -91,6 +103,9 @@ class LambdaVerdict:
                 "uniqueness and not 'proven trust'."
             ),
         }
+        if result["basis"] != _LAMBDA_BASIS or result["proven_trust"] is not False:
+            raise ValueError("Lambda basis and proven_trust are fixed advisory fields")
+        return result
 
 
 @dataclass
@@ -101,14 +116,20 @@ class GovernanceDecision:
     reason: str = ""
 
     def __post_init__(self) -> None:
-        if self.status not in _ALLOWED_DECISIONS:
+        self._validate(self.status)
+
+    @staticmethod
+    def _validate(status: object) -> None:
+        if status not in _ALLOWED_DECISIONS:
             raise ValueError(
                 "decision status must be one of %r (got %r)"
-                % (_ALLOWED_DECISIONS, self.status)
+                % (_ALLOWED_DECISIONS, status)
             )
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"status": self.status, "reason": self.reason}
+        result = {"status": self.status, "reason": self.reason}
+        self._validate(result["status"])
+        return result
 
 
 def build_governance_predicate(
@@ -124,7 +145,8 @@ def build_governance_predicate(
     BLOCKED, the resulting predicate's decision status is pinned to BLOCKED.
     A blocked verdict can never be silently flipped to ALLOWED here.
     """
-    status = decision.status
+    decision_body = decision.to_dict()
+    status = decision_body["status"]
     if honest_blocked and status != "BLOCKED":
         # honest-BLOCKED: never flip a blocked verdict to allowed.
         raise ValueError(
@@ -137,7 +159,7 @@ def build_governance_predicate(
         "producer": "szl_govsign",
         "lambda_verdict": lambda_verdict.to_dict(),
         "energy": energy.to_dict(),
-        "decision": decision.to_dict(),
+        "decision": decision_body,
         "honest_blocked": bool(honest_blocked or status == "BLOCKED"),
         "doctrine": {
             "signature_proves": [

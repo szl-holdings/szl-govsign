@@ -146,7 +146,9 @@ def verify(
     """Verify a DSSE envelope against `public_key`.
 
     Recomputes PAE over the decoded payload and checks the ECDSA signature.
-    Returns True only if at least one signature verifies; False otherwise.
+    Requires well-encoded signature entries and at least one signature that
+    verifies. Malformed entries fail regardless of their order; well-encoded
+    signatures from other keys do not prevent a matching signer from verifying.
     Never raises on a bad signature — returns False (so tamper => False).
     """
     try:
@@ -157,8 +159,11 @@ def verify(
         sigs = envelope.get("signatures") or []
         if not sigs:
             return False
-        for sig_entry in sigs:
-            sig = _b64decode_any(sig_entry["sig"])
+        # Validate every encoded entry before accepting any signer. Otherwise a
+        # malformed entry after the first valid signature bypasses validation,
+        # while the same entry before it fails the identical envelope.
+        signatures = [_b64decode_any(sig_entry["sig"]) for sig_entry in sigs]
+        for sig in signatures:
             try:
                 public_key.verify(sig, to_verify, ec.ECDSA(hashes.SHA256()))
                 return True

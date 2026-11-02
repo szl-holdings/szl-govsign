@@ -27,6 +27,14 @@ The Kernel Hub card is `hf/kernel-card.md`, published by the `hf-kernel-publish`
 
 Λ = Conjecture 1, never a theorem. Doctrine v11. Apache-2.0.
 
+The mutable governance input objects revalidate their emitted snapshots in
+`to_dict()` and `build_governance_predicate()`. Later edits cannot emit an
+estimated/nonfinite energy claim, an unknown decision status, or rewritten
+Lambda advisory fields through these builders. Valid edits remain supported;
+an explicit `honest_blocked=True` still refuses an ALLOWED decision. These
+checks do not establish physical measurement truth, and the general-purpose
+`attest()` function does not certify arbitrary caller-supplied predicates.
+
 ## Load
 
 The Kernel Hub repository [`kernels/SZLHOLDINGS/szl-govsign`](https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign)

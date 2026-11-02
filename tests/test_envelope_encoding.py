@@ -47,3 +47,29 @@ def test_url_safe_unpadded_envelope_still_verifies():
     converted['payload'] = converted['payload'].translate(str.maketrans('+/', '-_')).rstrip('=')
     converted['signatures'][0]['sig'] = converted['signatures'][0]['sig'].translate(str.maketrans('+/', '-_')).rstrip('=')
     assert verify(converted, key.public_key()) is True
+
+
+@pytest.mark.parametrize('malformed', [
+    {'sig': '#'}, {'sig': 'A'}, {'sig': 'AAAA='}, {'sig': None}, {}, None,
+])
+@pytest.mark.parametrize('valid_first', [True, False])
+def test_malformed_signature_entry_fails_regardless_of_order(malformed, valid_first):
+    key = generate_ephemeral_keypair()
+    envelope = attest([Subject('artifact', {'sha256': '0' * 64})], {}, key)
+    valid = envelope['signatures'][0]
+    envelope['signatures'] = [valid, malformed] if valid_first else [malformed, valid]
+
+    assert verify(envelope, key.public_key()) is False
+
+
+@pytest.mark.parametrize('valid_first', [True, False])
+def test_well_encoded_untrusted_signature_does_not_veto_valid_signature(valid_first):
+    key = generate_ephemeral_keypair()
+    other_key = generate_ephemeral_keypair()
+    subjects = [Subject('artifact', {'sha256': '0' * 64})]
+    envelope = attest(subjects, {}, key)
+    valid = envelope['signatures'][0]
+    untrusted = attest(subjects, {}, other_key)['signatures'][0]
+    envelope['signatures'] = [valid, untrusted] if valid_first else [untrusted, valid]
+
+    assert verify(envelope, key.public_key()) is True

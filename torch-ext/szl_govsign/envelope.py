@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 from dataclasses import dataclass
 from typing import Dict, List, Any, Tuple
 
@@ -131,11 +132,12 @@ def attest(
 
 
 def _b64decode_any(s: str) -> bytes:
-    """Accept standard or URL-safe base64 (DSSE verifiers must accept either)."""
-    try:
-        return base64.b64decode(s, validate=True)
-    except Exception:
-        return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
+    """Accept either Base64 alphabet and optional padding without discarding junk."""
+    if not isinstance(s, str):
+        raise TypeError("DSSE Base64 fields must be strings")
+    if not re.fullmatch(r"[A-Za-z0-9+/_-]*={0,2}", s) or ("=" in s and len(s) % 4):
+        raise ValueError("malformed DSSE Base64 encoding")
+    return base64.b64decode(s + "=" * (-len(s) % 4), altchars=b"-_", validate=True)
 
 
 def verify(

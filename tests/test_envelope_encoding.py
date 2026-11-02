@@ -7,7 +7,15 @@ import sys
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'torch-ext'))
-from szl_govsign.envelope import Subject, _b64decode_any, attest, generate_ephemeral_keypair, verify
+from szl_govsign.envelope import (
+    MAX_SIGNATURES,
+    MAX_SIGNATURE_BYTES,
+    Subject,
+    _b64decode_any,
+    attest,
+    generate_ephemeral_keypair,
+    verify,
+)
 
 
 @pytest.mark.parametrize('field', ['payload', 'signature'])
@@ -73,3 +81,25 @@ def test_well_encoded_untrusted_signature_does_not_veto_valid_signature(valid_fi
     envelope['signatures'] = [valid, untrusted] if valid_first else [untrusted, valid]
 
     assert verify(envelope, key.public_key()) is True
+
+
+def test_signature_count_is_bounded_before_decoding():
+    key = generate_ephemeral_keypair()
+    envelope = attest([Subject('artifact', {'sha256': '0' * 64})], {}, key)
+    valid = envelope['signatures'][0]
+    envelope['signatures'] = [valid] * (MAX_SIGNATURES + 1)
+
+    assert verify(envelope, key.public_key()) is False
+
+
+@pytest.mark.parametrize('valid_first', [True, False])
+def test_oversized_signature_fails_regardless_of_order(valid_first):
+    key = generate_ephemeral_keypair()
+    envelope = attest([Subject('artifact', {'sha256': '0' * 64})], {}, key)
+    valid = envelope['signatures'][0]
+    oversized = {
+        'sig': base64.b64encode(b'0' * (MAX_SIGNATURE_BYTES + 1)).decode('ascii'),
+    }
+    envelope['signatures'] = [valid, oversized] if valid_first else [oversized, valid]
+
+    assert verify(envelope, key.public_key()) is False

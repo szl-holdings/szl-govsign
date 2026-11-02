@@ -32,6 +32,9 @@ from cryptography.exceptions import InvalidSignature
 from .pae import pae, PAYLOAD_TYPE
 
 IN_TOTO_STATEMENT_TYPE = "https://in-toto.io/Statement/v1"
+MAX_SIGNATURES = 64
+MAX_SIGNATURE_BYTES = 1024
+MAX_SIGNATURE_B64_CHARS = 4 * ((MAX_SIGNATURE_BYTES + 2) // 3)
 
 
 @dataclass
@@ -140,6 +143,21 @@ def _b64decode_any(s: str) -> bytes:
     return base64.b64decode(s + "=" * (-len(s) % 4), altchars=b"-_", validate=True)
 
 
+def _decode_bounded_signature(entry: Dict[str, Any]) -> bytes:
+    """Decode one signature without allocating beyond the verifier policy."""
+    if not isinstance(entry, dict):
+        raise TypeError("DSSE signature entries must be objects")
+    encoded = entry["sig"]
+    if not isinstance(encoded, str):
+        raise TypeError("DSSE signature values must be strings")
+    if len(encoded) > MAX_SIGNATURE_B64_CHARS:
+        raise ValueError("DSSE signature exceeds the encoded-size limit")
+    signature = _b64decode_any(encoded)
+    if len(signature) > MAX_SIGNATURE_BYTES:
+        raise ValueError("DSSE signature exceeds the decoded-size limit")
+    return signature
+
+
 def verify(
     envelope: Dict[str, Any], public_key: ec.EllipticCurvePublicKey
 ) -> bool:
@@ -156,18 +174,21 @@ def verify(
         body = _b64decode_any(envelope["payload"])
         to_verify = pae(PAYLOAD_TYPE, body)
         sigs = envelope.get("signatures") or []
-        if not sigs:
+        if not isinstance(sigs, list) or not sigs or len(sigs) > MAX_SIGNATURES:
             return False
-        # DSSE decodes the complete signature list before verification. A
-        # valid first signature must not hide a malformed later entry.
-        decoded_sigs = [_b64decode_any(entry["sig"]) for entry in sigs]
-        for sig in decoded_sigs:
-            try:
-                public_key.verify(sig, to_verify, ec.ECDSA(hashes.SHA256()))
-                return True
-            except InvalidSignature:
-                continue
-        return False
+        # Validate the complete list without retaining attacker-controlled
+        # decoded values. A valid signature must not hide a malformed or
+        # oversized later entry.
+        verified = False
+        for sig_entry in sigs:
+            sig = _decode_bounded_signature(sig_entry)
+            if not verified:
+                try:
+                    public_key.verify(sig, to_verify, ec.ECDSA(hashes.SHA256()))
+                    verified = True
+                except InvalidSignature:
+                    pass
+        return verified
     except Exception:
         # Malformed envelope, bad base64, etc. -> verification fails closed.
         return False

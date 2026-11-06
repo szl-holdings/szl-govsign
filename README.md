@@ -105,3 +105,7 @@ enforces that). Configuration lives in `.github/hf-kernels.json`; the kernel car
 - Native Kernel Hub (publish mirror): https://huggingface.co/kernels/SZLHOLDINGS/szl-govsign
 - Model-type twin (pointer to the kernel repo): https://huggingface.co/SZLHOLDINGS/szl-govsign
 - Hologram space: https://huggingface.co/spaces/SZLHOLDINGS/govsign-live
+
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE).

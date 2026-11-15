@@ -9,7 +9,7 @@ tags:
   - dsse
   - in-toto
   - governance
-  - doi:10.5281/zenodo.19944926
+  - doi:10.5281/zenodo.24239896
 ---
 
 <!-- Native artwork: szl-brand@4309f6fce89179331b0b3ed8c99494e76c5be256; Orbit v2 icon SHA-256 6e2b7d72a3af3d9602b79de41df0194ede6496a9661f057108ec224c0efc92e6. -->
@@ -115,7 +115,7 @@ The `https://szl.holdings/governance/v1` predicate is SZL's own.
 ## Citation
 
 Part of the SZL Holdings *Ouroboros Thesis*. Concept DOI (always the latest version):
-[10.5281/zenodo.19944926](https://doi.org/10.5281/zenodo.19944926). Author: Stephen P. Lutar Jr.
+[10.5281/zenodo.24239896](https://doi.org/10.5281/zenodo.24239896). Author: Stephen P. Lutar Jr.
 ([ORCID 0009-0001-0110-4173](https://orcid.org/0009-0001-0110-4173)).
 
 ## License

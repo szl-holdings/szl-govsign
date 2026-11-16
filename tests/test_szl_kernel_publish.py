@@ -195,6 +195,68 @@ class BuildTests(Fixture):
                     kp.parse_kernel(config(**override)["kernels"][0], 0)
 
 
+class ReleaseAncestryTests(Fixture):
+    def verify_release(self, served, release):
+        return kp.verify_release_drift(self.cfg(), self.src, served, release,
+                                       kp.build_payload(self.cfg(), self.src, served), "v1")
+
+    def test_identical_source_and_release(self):
+        self.assertEqual(self.verify_release(self.commit, self.commit)["release_relationship"],
+                         "SAME_COMMIT")
+
+    def test_newer_served_kernel_does_not_request_rollback(self):
+        self.write({"torch-ext/szl_demo/_ops.py": b"def add(a, b):\n    return b + a\n"})
+        served = self.commit_all("reviewed newer kernel")
+        result = self.verify_release(served, self.commit)
+        self.assertEqual(result["release_relationship"], "RELEASE_OLDER_THAN_SERVED_SOURCE")
+        self.assertEqual(result["release_checked"], self.commit)
+
+    def test_newer_release_with_changed_kernel_still_fails(self):
+        self.write({"torch-ext/szl_demo/_ops.py": b"def add(a, b):\n    return b + a\n"})
+        newer_release = self.commit_all("new release not published")
+        with self.assertRaisesRegex(kp.PublishError, "SOURCE_AHEAD"):
+            self.verify_release(self.commit, newer_release)
+
+    def test_newer_release_with_identical_managed_content_passes(self):
+        self.write({"README.md": b"unmanaged documentation only\n"})
+        newer_release = self.commit_all("documentation")
+        self.assertEqual(self.verify_release(self.commit, newer_release)["release_relationship"],
+                         "RELEASE_NEWER_THAN_SERVED_SOURCE")
+
+    def test_newer_release_with_changed_managed_card_fails(self):
+        self.write({"hf/kernel-card.md": (CARD + "New managed documentation.\n").encode()})
+        newer_release = self.commit_all("managed card")
+        with self.assertRaisesRegex(kp.PublishError, "SOURCE_AHEAD"):
+            self.verify_release(self.commit, newer_release)
+
+    def test_diverged_history_fails(self):
+        self.write({"README.md": b"served branch\n"})
+        served = self.commit_all("served")
+        g(self.src, "checkout", "-q", "-b", "different-release", self.commit)
+        self.write({"README.md": b"other branch\n"})
+        release = self.commit_all("divergent release")
+        with self.assertRaisesRegex(kp.PublishError, "RELEASE_SOURCE_DIVERGED"):
+            self.verify_release(served, release)
+
+    def test_shallow_history_fails_even_for_same_commit(self):
+        shallow = self.tmp / "shallow"
+        g(self.tmp, "clone", "--quiet", "--depth", "1", self.src.as_uri(), str(shallow))
+        cfg = kp.find_kernel(shallow, "SZLHOLDINGS/szl-demo")
+        with self.assertRaisesRegex(kp.PublishError, "RELEASE_HISTORY_INCOMPLETE"):
+            kp.verify_release_drift(cfg, shallow, self.commit, self.commit,
+                                    kp.build_payload(cfg, shallow, self.commit), "v1")
+
+    def test_unknown_release_fails(self):
+        with self.assertRaises(kp.PublishError):
+            self.verify_release(self.commit, "0" * 40)
+
+    def test_matching_commit_with_wrong_payload_is_not_accepted(self):
+        wrong = kp.build_payload(self.cfg(), self.src, self.commit)
+        wrong["README.md"] = b"wrong bytes"
+        with self.assertRaisesRegex(kp.PublishError, "SOURCE_AHEAD"):
+            kp.verify_release_drift(self.cfg(), self.src, self.commit, self.commit, wrong, "v1")
+
+
 class PublishTests(Fixture):
     def setUp(self):
         super().setUp()

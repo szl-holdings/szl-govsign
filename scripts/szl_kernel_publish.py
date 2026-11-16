@@ -811,6 +811,34 @@ def check_local(cfg: KernelConfig, repo_root: Path, commit: str, dist: Path) -> 
     return report
 
 
+def verify_release_drift(cfg: KernelConfig, repo_root: Path, source: str, release_sha: str,
+                         payload: dict[str, bytes], branch: str) -> dict:
+    """Only a genuinely newer release can put a verified served source behind.
+
+    A historic release must not request a rollback of a newer source published
+    through workflow_dispatch. Incomplete or divergent histories fail closed.
+    This does not replace verify_hub's source-on-main or byte/smoke checks.
+    """
+    source = resolve_commit(repo_root, source)
+    release_sha = resolve_commit(repo_root, release_sha)
+    shallow = git(repo_root, "rev-parse", "--is-shallow-repository").decode().strip()
+    if shallow != "false":
+        raise PublishError("RELEASE_HISTORY_INCOMPLETE: full Git history is required")
+    if source == release_sha:
+        relationship = "SAME_COMMIT"
+    elif is_ancestor(repo_root, release_sha, source):
+        relationship = "RELEASE_OLDER_THAN_SERVED_SOURCE"
+    elif is_ancestor(repo_root, source, release_sha):
+        relationship = "RELEASE_NEWER_THAN_SERVED_SOURCE"
+    else:
+        raise PublishError("RELEASE_SOURCE_DIVERGED: release and served source are not ancestor-related")
+    if relationship != "RELEASE_OLDER_THAN_SERVED_SOURCE":
+        if content_key(build_payload(cfg, repo_root, release_sha)) != content_key(payload):
+            raise PublishError(f"SOURCE_AHEAD: release {release_sha[:12]} changes the kernel but {branch} serves "
+                               f"{source[:12]}; dispatch hf-kernel-publish to publish it")
+    return {"release_checked": release_sha, "release_relationship": relationship}
+
+
 def verify_hub(cfg: KernelConfig, repo_root: Path, source: str, ref: str, default_branch: str,
                release_sha: str | None) -> dict:
     sys.dont_write_bytecode = True
@@ -898,13 +926,12 @@ def verify_hub(cfg: KernelConfig, repo_root: Path, source: str, ref: str, defaul
     if "torch-universal" not in accepted:
         raise PublishError(f"{branch}: torch-universal is not accepted by the resolver: {report['variant_decisions']}")
 
-    # 4. Drift guard: a newer release whose kernel content was never published.
+    # 4. Drift guard: only a newer release can put the served source behind.
     if release_sha:
         release_sha = resolve_commit(repo_root, release_sha)
-        if content_key(build_payload(cfg, repo_root, release_sha)) != content_key(payload):
-            raise PublishError(f"SOURCE_AHEAD: release {release_sha[:12]} changes the kernel but {branch} serves "
-                               f"{source[:12]}; dispatch hf-kernel-publish to publish it")
-        report["release_checked"] = release_sha
+        if not is_ancestor(repo_root, release_sha, f"origin/{default_branch}"):
+            raise PublishError(f"release {release_sha} is not on origin/{default_branch}")
+        report.update(verify_release_drift(cfg, repo_root, source, release_sha, payload, branch))
     report["state"] = "PASS"
     return report
 

@@ -61,7 +61,7 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.12"
-  KERNELS_VERSION: "0.18.2"
+  KERNELS_VERSION: "0.18.3"
   TORCH_VERSION: "2.10.0"
   TORCH_INDEX: https://download.pytorch.org/whl/cpu
   # Runtime imports of the kernel that kernels' curated python-depends cannot declare.
@@ -149,6 +149,7 @@ jobs:
   publish:
     needs: [plan, build]
     if: needs.plan.outputs.mode == 'plan' || needs.plan.outputs.mode == 'publish'
+    environment: hf-publish  # required reviewer; HF_TOKEN must be an environment secret, not a repo secret
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
@@ -242,6 +243,7 @@ jobs:
   model-twin:
     needs: [plan, verify]
     if: needs.plan.outputs.mode == 'publish' && needs.verify.result == 'success' && inputs.skip_model_twin != true
+    environment: hf-publish  # required reviewer; HF_TOKEN must be an environment secret, not a repo secret
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
